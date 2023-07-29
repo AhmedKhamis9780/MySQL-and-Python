@@ -1,5 +1,5 @@
 from flask import Flask, render_template, json, request, redirect, session
-from flask_mysqldb import MySQL
+from flaskext.mysql import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
@@ -8,7 +8,7 @@ app = Flask(__name__)
 mysql = MySQL()
 
 # MySQL configurations
-app.config['MYSQL_DATABASE_USER'] = 'root'
+app.config['MYSQL_DATABASE_USER'] = 'flask_app'
 app.config['MYSQL_DATABASE_PASSWORD'] = 'whatever'
 app.config['MYSQL_DATABASE_DB'] = 'bucketlist'
 app.config['MYSQL_DATABASE_HOST'] = 'mysql_db'

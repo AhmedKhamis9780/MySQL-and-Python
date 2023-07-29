@@ -3,10 +3,12 @@ version: '3'
 services:
 
   mysql_db:
-    image: mysql:5.7
+    image: mysql
     environment:
       MYSQL_ROOT_PASSWORD: whatever
       MYSQL_DATABASE: bucketlist
+      MYSQL_USER: flask_app
+      MYSQL_PASSWORD: whatever
     volumes:
     - my_own_data:/var/lib/mysql
     ports:
