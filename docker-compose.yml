@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+
+  mysql_db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: whatever
+      MYSQL_DATABASE: bucketlist
+    volumes:
+    - my_own_data:/var/lib/mysql
+    ports:
+      - "3306:3306"  
+
+  flask:
+    build: .
+    depends_on:
+      - mysql_db
+    ports:
+      - 5002:5002
+    environment:
+      - DB_HOST=mysql_db  
+volumes:
+ my_own_data:     
