@@ -1,21 +1,69 @@
+import mysql.connector
 from flask import Flask, render_template, json, request, redirect, session
-from flaskext.mysql import MySQL
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
-
+import secrets
+from mysql.connector import Error
+import traceback
 app = Flask(__name__)
+setup_done = False
+# Set a secret key for the session
+app.secret_key = secrets.token_hex(16)
 
-mysql = MySQL()
+# Function to execute SQL scripts from files
 
-# MySQL configurations
-app.config['MYSQL_DATABASE_USER'] = 'flask_app'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'whatever'
-app.config['MYSQL_DATABASE_DB'] = 'bucketlist'
-app.config['MYSQL_DATABASE_HOST'] = 'mysql_db'
-mysql.init_app(app)
+def execute_sql_file(file_path):
+    with open(file_path, 'r') as file:
+        sql_commands = file.read()
+        conn = get_mysql_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql_commands, multi=True)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        traceback.print_exc()
 
-# set a secret key for the session
-app.secret_key = 'why would I tell you my secret key?'
+
+def get_mysql_connection():
+    return mysql.connector.connect(
+        host=os.environ['DB_HOST'],
+        port=int(os.environ['DB_PORT']),
+        user=os.environ['DB_USER'],
+        password=os.environ['DB_PASSWORD'],
+        database=os.environ['DB_NAME']
+    )
+
+
+@app.before_request
+def setup_database():
+    global setup_done
+    if not setup_done:
+        try:
+            # Execute BucketList.txt script to create the database
+            execute_sql_file('BucketList.txt')
+        except:
+            pass
+        try:
+            # Execute sp_createUser.txt script to create the stored procedure
+            execute_sql_file('sp_createUser.txt')
+        except:
+            pass
+        try:
+            # Execute sp_createUser.txt script to create the stored procedure
+            execute_sql_file('sp_validateLogin.txt')
+        except:
+            pass
+        try:
+            # Execute tbl_wish.sql script to create the tbl_wish table
+            execute_sql_file('tbl_wish.sql')
+        except:
+            pass
+        try:
+            # Execute sp_addWish.txt script to create the stored procedure
+            execute_sql_file('sp_addWish.txt')
+        except:
+            pass
+        setup_done = True
+
 
 @app.route("/")
 def main():
@@ -25,7 +73,9 @@ def main():
 def showSignUp():
     return render_template('signup.html')
 
-@app.route('/signUp',methods=['POST','GET'])
+
+
+@app.route('/signUp', methods=['POST', 'GET'])
 def signUp():
     # read the posted values from the UI
     _name = request.form['inputName']
@@ -34,55 +84,67 @@ def signUp():
 
     # validate the received values
     if _name and _email and _password:
-        conn = mysql.connect()
+        conn = get_mysql_connection()
         cursor = conn.cursor()
+        try:
+            # Check if the email already exists
+            cursor.execute("SELECT user_id FROM tbl_user WHERE user_username = %s", (_email,))
+            data = cursor.fetchone()
 
-        #_hash_password = generate_password_hash(_password) 
-        sql_query = "INSERT INTO tbl_user (user_name, user_username, user_password) VALUES (%s, %s, %s)"
-        params = (_name, _email, _password)
-        cursor.execute(sql_query, params)
-
-        #cursor.callproc('sp_createUser',(_name,_email,_password))
-
-        data = cursor.fetchall()
-
-        if len(data) == 0:
-            conn.commit()
-            return json.dumps({'message':'User created successfully !'})
-        else:
-            return json.dumps({'error':str(data[0])})  
+            if data:
+                return json.dumps({'message':'Email already exists!'})
+            else:
+                # Insert the new user into the database
+                cursor.execute(
+                    "INSERT INTO tbl_user (user_name, user_username, user_password) VALUES (%s, %s, %s)",
+                    (_name, _email, _password))
+                conn.commit()
+                return json.dumps({'message':'User created successfully !'})
+        except Exception as e:
+            traceback.print_exc()
+            return json.dumps({'html':'<span>Enter the required fields</span>'}) 
+        finally:
+            # Consume the result from the SELECT query and close the cursor and connection in the 'finally' block
+            cursor.fetchall()
+            cursor.close()
+            conn.close()
     else:
-        return json.dumps({'html':'<span>Enter the required fields</span>'})     
+        return render_template('check.html', error='Enter the required fields')
+
+
 
 
 @app.route('/showSignIn')
 def showSignin():
     return render_template('signin.html')
 
-@app.route('/validateLogin',methods=['POST'])
+@app.route('/validateLogin', methods=['POST'])
 def validateLogin():
     try:
-        _username = request.form['inputEmail']
+        _email = request.form['inputEmail']
         _password = request.form['inputPassword']
 
-        con = mysql.connect()
-        cursor = con.cursor()
-        cursor.callproc('sp_validateLogin',(_username,))
-        data = cursor.fetchall()
-        if len(data) > 0:
-            if data[0][3]==_password:
-                session['user'] = data[0][0]
+        conn = get_mysql_connection()
+        cursor = conn.cursor()
+
+        # Validate user login
+        cursor.execute("SELECT user_id, user_password FROM tbl_user WHERE user_username = %s", (_email,))
+        data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if data:
+            user_id, mypassword = data
+            if str(mypassword) == str(_password):
+                session['user'] = user_id
                 return redirect('/userHome')
             else:
-                return render_template('error.html',error = 'Wrong Email address or Password')
+                return render_template('error.html', error='Invalid email or password')
         else:
-            return render_template('error.html',error='Wrong Email address or Password')
-
+            return render_template('error.html', error='User does not exist')
     except Exception as e:
-        return render_template('error.html',error=str(e))
-    finally:
-        cursor.close()
-        con.close()
+        traceback.print_exc()
+        return render_template('error.html', error=f'An error occurred: {e}')
+
 
 @app.route('/userHome')
 def userHome():
@@ -100,32 +162,26 @@ def logout():
 def showAddWish():
     return render_template('addWish.html')
 
-@app.route('/addWish',methods=['POST'])
+@app.route('/addWish', methods=['POST'])
 def addWish():
     try:
         if session.get('user'):
             _title = request.form['inputTitle']
             _description = request.form['inputDescription']
             _user = session.get('user')
- 
-            conn = mysql.connect()
+
+            conn = get_mysql_connection()
             cursor = conn.cursor()
-            cursor.callproc('sp_addWish',(_title,_description,_user))
-            data = cursor.fetchall()
- 
-            if len(data) == 0:
-                conn.commit()
-                return redirect('/userHome')
-            else:
-                return render_template('error.html',error = 'An error occurred!')
- 
+            cursor.callproc('sp_addWish', (_title, _description, _user))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect('/userHome')
         else:
-            return render_template('error.html',error = 'Unauthorized Access')
+            return render_template('error.html', error='Unauthorized Access')
     except Exception as e:
-        return render_template('error.html',error = str(e))
-    finally:
-        cursor.close()
-        conn.close()
+        return render_template('error.html', error=str(e))
+
 
 @app.route('/getWish')
 def getWish():
@@ -133,8 +189,8 @@ def getWish():
         if session.get('user'):
             _user = session.get('user')
  
-            con = mysql.connect()
-            cursor = con.cursor()
+            conn = get_mysql_connection()
+            cursor = conn.cursor()
             cursor.callproc('sp_GetWishByUser',(_user,))
             wishes = cursor.fetchall()
  
@@ -147,11 +203,14 @@ def getWish():
                         'Date': wish[4]}
                 wishes_dict.append(wish_dict)
  
-            return json.dumps(wishes_dict)
+            # Close the cursor and connection
+            cursor.close()
+            conn.close()
+            return render_template('wishes.html', wishes=wishes_dict)
         else:
-            return render_template('error.html', error = 'Unauthorized Access')
+            return render_template('error.html', error='Unauthorized Access')
     except Exception as e:
-        return render_template('error.html', error = str(e))
+        return render_template('error.html', error=str(e))
 
 if __name__ == "__main__":
-    app.run(port=5002,debug=True,host="0.0.0.0")
+    app.run(host="0.0.0.0", port=5000, debug=True)
