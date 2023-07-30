@@ -38,8 +38,11 @@ def signUp():
         cursor = conn.cursor()
 
         #_hash_password = generate_password_hash(_password) 
+        sql_query = "INSERT INTO tbl_user (user_name, user_username, user_password) VALUES (%s, %s, %s)"
+        params = (_name, _email, _password)
+        cursor.execute(sql_query, params)
 
-        cursor.callproc('sp_createUser',(_name,_email,_password))
+        #cursor.callproc('sp_createUser',(_name,_email,_password))
 
         data = cursor.fetchall()
 
