@@ -6,12 +6,11 @@ services:
     image: mysql
     environment:
       MYSQL_ROOT_PASSWORD: whatever
-      MYSQL_DATABASE: bucketlist
+      MYSQL_DATABASE: BucketList
       MYSQL_USER: flask_app
       MYSQL_PASSWORD: whatever
     volumes:
     - my_own_data:/var/lib/mysql
-    - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "3306:3306"  
 
@@ -22,6 +21,10 @@ services:
     ports:
       - 5002:5002
     environment:
-      - DB_HOST=mysql_db  
+      - DB_HOST = mysql_db
+      - DB_PORT = 3306
+      - DB_USER = flask_app
+      - DB_PASSWORD = whatever
+      - DB_NAME = BucketList 
 volumes:
  my_own_data:     
