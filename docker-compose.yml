@@ -3,7 +3,7 @@ version: '3'
 services:
 
   mysql_db:
-    image: mysql
+    image: mysql:5.7
     environment:
       MYSQL_ROOT_PASSWORD: whatever
       MYSQL_DATABASE: BucketList
@@ -11,6 +11,7 @@ services:
       MYSQL_PASSWORD: whatever
     volumes:
     - my_own_data:/var/lib/mysql
+    - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "3306:3306"  
 
