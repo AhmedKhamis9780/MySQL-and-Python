@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 EXPOSE 5000
-CMD [ "python", "./FlaskApp/app.py" ]
+CMD [ "python", "./FlaskApp/real_app.py" ]

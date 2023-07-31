@@ -1,5 +1,5 @@
+cryptography
 blinker==1.6.2
-os-sys
 click==8.1.6
 colorama==0.4.6
 Flask==2.3.2
