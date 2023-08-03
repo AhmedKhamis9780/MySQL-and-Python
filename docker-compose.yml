@@ -21,11 +21,5 @@ services:
       - mysql_db
     ports:
       - 5000:5000
-    environment:
-      - DB_HOST = mysql_db
-      - DB_PORT = 3306
-      - DB_USER = flask_app
-      - DB_PASSWORD = whatever
-      - DB_NAME = BucketList 
 volumes:
  my_own_data:     

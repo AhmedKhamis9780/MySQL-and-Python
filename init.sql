@@ -55,5 +55,3 @@ BEGIN
     INSERT INTO tbl_wish (wish_title, wish_description, wish_user_id, wish_date)
     VALUES (p_title, p_description, p_user_id, NOW());
 END$$
-
-DELIMITER;
