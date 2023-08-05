@@ -11,7 +11,7 @@ mysql = MySQL()
 app.config['MYSQL_DATABASE_USER'] = 'flask_app'
 app.config['MYSQL_DATABASE_PASSWORD'] = 'whatever'
 app.config['MYSQL_DATABASE_DB'] = 'BucketList'
-app.config['MYSQL_DATABASE_HOST'] = 'mysql_db'
+app.config['MYSQL_DATABASE_HOST'] = 'mysql-service'
 mysql.init_app(app)
 
 # set a secret key for the session
