@@ -11,7 +11,6 @@ pipeline {
                 }
             }
         }
-    }
         stage('k8s') {
             steps {
                 withAWS(credentials: 'aws_cren', region: 'us-east-1') {
@@ -20,6 +19,7 @@ pipeline {
                 }
     }
     }
+}
 }
 
 
